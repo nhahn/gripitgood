@@ -83,6 +83,8 @@ handles.str = get(handles.run_button,'String');
 
 if(strcmp(handles.str, 'Run'))
     clear global snapshots;
+    
+    %setup our serial connection
     set(handles.run_button,'String','Stop');
     handles.exit = 'no';
     handles.serial = serial('/dev/tty.GripIt-9D37-RNI-SPP', 'BaudRate', 115200);
@@ -91,20 +93,36 @@ if(strcmp(handles.str, 'Run'))
     s = handles.serial;
     fopen(s);
     
+    %save data variable
     data = [];
     count = 1;
+    
+    %totaled force line
+    forceLine = zeros(1,70);
+
+    %input array
     x = zeros(16,16);
-    %    y = zeros(
     tail = zeros(6,1);
     
+    %setup our colormap view
     colormap('jet')
     h = pcolor(handles.axes,x);
-    caxis([0,85]);
-    colorbar
+    caxis(handles.axes,[0,85]);
+    colorbar('peer',handles.axes);
+    set(h, 'EdgeColor', 'none');
+
+    %integrated force plot
+    force = plot(handles.axes2,forceLine);
+    %calibartion number
     cali = 0;
-    set(h, 'EdgeColor', 'none')
+    
+    %set the maxForce to zero
+    maxForce = 0;
+    set(handles.maxForce, 'String', '0');
+
     
     while 1
+        %read in our data values
         try
             tmp = fscanf(s,'%d:%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,;');
             if tmp(1)==0
@@ -135,11 +153,8 @@ if(strcmp(handles.str, 'Run'))
                 end
             end
         end
-        %temp = x(1,1:16);
-        %x(1,1:16) = x(7,1:16);
-        %x(7,1:16) = temp;
-        %y = [y ; x];
         
+        %set a zeroing calibration here
         if(cali == 0)
           cali = x;
         end
@@ -169,11 +184,35 @@ if(strcmp(handles.str, 'Run'))
         %%
         x = calc.*17;
         
+        %area of each sensing location in square inches
+        areaSens1 = 0.0062;
+        
         data(:,:,count) = x;
         count = count + 1;
         
         set(h,'CData',x);
         
+        %Calculate the total force being applied on the sensor
+        xForce = 0;
+        
+        for i = 1:length(l)
+            for j = 1:length(w)
+                xForce = xForce + areaSens1.*x(i,j);
+            end
+        end
+        
+        %if we have a new max force, set the label and variable
+        if xForce > maxForce
+           set(handles.maxForce, 'String', num2str(xForce));
+           maxForce = xForce;
+        end
+        
+        %display it in a beautiful line graph
+        forceLine = circshift(forceLine,[0,1]);
+        forceLine(1) = xForce;
+        set(force,'Ydata', forceLine);
+        
+        %draw everything before the next loop iteration
         drawnow;
         handles.data = data;
         guidata(hObject,handles);
@@ -183,7 +222,7 @@ else
     guidata(hObject,handles);
     fclose(handles.serial);
     delete(handles.serial);
-    handles.serial = 0
+    handles.serial = 0;
     handles.exit = 'yes';
     guidata(hObject,handles);
 end
