@@ -107,7 +107,7 @@ if(strcmp(handles.str, 'Run'))
     %setup our colormap view
     colormap('jet')
     h = pcolor(handles.axes,x);
-    caxis(handles.axes,[0,85]);
+    caxis(handles.axes,[0,120]);
     colorbar('peer',handles.axes);
     set(h, 'EdgeColor', 'none');
 
@@ -178,12 +178,13 @@ if(strcmp(handles.str, 'Run'))
         %%
         % NOTE: 
         % - Each element in the matrix corresponds to an area of 0.0062 square inches
-        % - The conversion factor [17] is unitless, and accounts for
+        % - The weight factor [wf] is unitless, and accounts for
         % differences from the provided calibration curve and the actual
         % behavior of the pressur sensing cells.
         %%
-        x = calc.*17;
-        
+        wf = 100;
+        x = calc.*wf;
+        x(10,:) = x(10,:)./10;
         %area of each sensing location in square inches
         areaSens1 = 0.0062;
         
